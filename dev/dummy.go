@@ -31,7 +31,7 @@ func (dev *DummyData) Read(int) []uint8 {
 	if !dev.IsOpen {
 		log.Printf("not opened\n")
 	}
-	log.Printf("Closed\n")
+	log.Printf("Read\n")
 	return nil
 }
 
