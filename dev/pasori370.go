@@ -8,15 +8,15 @@ import (
 )
 
 const (
-	vendorID = 0x054c
+	vendorID  = 0x054c
 	productID = 0x02e1
 )
 
 // Pasori370Data data
 type Pasori370Data struct {
 	dev         *gousb.Device
-	outEndpoint gousb.OutEndpoint
-	inEndpoint  gousb.InEndpoint
+	outEndpoint *gousb.OutEndpoint
+	inEndpoint  *gousb.InEndpoint
 }
 
 // Open open
@@ -33,11 +33,19 @@ func (dev *Pasori370Data) Open() {
 		log.Fatalf("Could not open a device: %v", err)
 	}
 
-	for _, cfg := range dev.dev.Desc.Configs {
-		for _, inf := range cfg.Interfaces {
-			for _, alt := range inf.AltSettings {
-				for _, endPnt := range alt.Endpoints {
-					fmt.Printf("endpoint=%v\n", endPnt)
+	for cfgNum, cfg := range dev.dev.Desc.Configs {
+		config, _ := dev.dev.Config(cfgNum)
+		for infNum, inf := range cfg.Interfaces {
+			for altNum, alt := range inf.AltSettings {
+				intfc, _ := config.Interface(infNum, altNum)
+				for endNum, endPnt := range alt.Endpoints {
+					if endPnt.Direction == gousb.EndpointDirectionIn {
+						fmt.Printf("InEndpoint=%v\n", endPnt)
+						dev.inEndpoint, _ = intfc.InEndpoint(int(endNum))
+					} else {
+						fmt.Printf("OutEndpoint=%v\n", endPnt)
+						dev.outEndpoint, _ = intfc.OutEndpoint(int(endNum))
+					}
 				}
 			}
 		}
@@ -48,7 +56,6 @@ func (dev *Pasori370Data) Open() {
 func (dev *Pasori370Data) Close() {
 	dev.dev.Close()
 }
-
 
 // Read read
 func (dev *Pasori370Data) Read(int) []uint8 {

@@ -6,14 +6,14 @@ import (
 )
 
 func main() {
-	var dummy dev.DummyData
+	var pasori dev.Pasori370Data
 	var msg pcd.RawMsg
 
-	dummy.Open()
-	defer dummy.Close()
+	pasori.Open()
+	defer pasori.Close()
 
 	msg.Cmd = 0x18
 	msg.Data = []uint8{0x01}
 	data := pcd.RawEncode(&msg)
-	dummy.Write(data)
+	pasori.Write(data)
 }

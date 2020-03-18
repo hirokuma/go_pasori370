@@ -1,2 +1,4 @@
 github.com/google/gousb v0.0.0-20190812193832-18f4c1d8a750 h1:DVKHLo3yE4psTjD9aM2pY7EHoicaQbgmaxxvvHC6ZSM=
 github.com/google/gousb v0.0.0-20190812193832-18f4c1d8a750/go.mod h1:Tl4HdAs1ThE3gECkNwz+1MWicX6FXddhJEw7L8jRDiI=
+github.com/hirokuma/go_pasori370/dev v0.0.0-20200312132120-be9c484ab14d h1:r8IIZqNIbaVc+sxFhwCbEC2I0vsjNhd2sHOM+f/x9fE=
+github.com/hirokuma/go_pasori370/dev v0.0.0-20200312132120-be9c484ab14d/go.mod h1:w2wMoXg9FDuNsEBFw+Hvds484dlsIlibM4ZXqlFgHAM=
