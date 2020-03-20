@@ -32,24 +32,59 @@ func (dev *Pasori370Data) Open() {
 	if err != nil {
 		log.Fatalf("Could not open a device: %v", err)
 	}
+	dev.dev.SetAutoDetach(true)
+
+	config, err := dev.dev.Config(1)
+	if err != nil {
+		log.Fatalf("fail get config: %v", err)
+	}
+	fmt.Printf("config= %v\n", config)
+	intr, err := config.Interface(0, 0)
+	if err != nil {
+		log.Fatalf("fail get interface: %v", err)
+	}
+	fmt.Printf("interface= %v\n", intr)
+	dev.inEndpoint, err = intr.InEndpoint(4)
+	if err != nil {
+		log.Fatalf("fail get InEndpoint: %v", err)
+	}
+	dev.outEndpoint, err = intr.OutEndpoint(4)
+	if err != nil {
+		log.Fatalf("fail get OutEndpoint: %v", err)
+	}
+	fmt.Printf("InEndpoint= %v\n", dev.inEndpoint)
+	fmt.Printf("OutEndpoint= %v\n", dev.outEndpoint)
+	fmt.Printf("\n\n")
 
 	for cfgNum, cfg := range dev.dev.Desc.Configs {
-		config, _ := dev.dev.Config(cfgNum)
+		fmt.Printf("config[%d]= %v\n", cfgNum, cfg)
 		for infNum, inf := range cfg.Interfaces {
+			fmt.Printf("interface[%d]= %v\n", infNum, inf)
 			for altNum, alt := range inf.AltSettings {
-				intfc, _ := config.Interface(infNum, altNum)
-				for endNum, endPnt := range alt.Endpoints {
-					if endPnt.Direction == gousb.EndpointDirectionIn {
-						fmt.Printf("InEndpoint=%v\n", endPnt)
-						dev.inEndpoint, _ = intfc.InEndpoint(int(endNum))
+				fmt.Printf("alt[%d]= %v\n", altNum, alt)
+				for epntNum, epnt := range alt.Endpoints {
+					fmt.Printf("epnt[%d]= %v\n", epntNum, epnt)
+					config, err = dev.dev.Config(cfgNum)
+					if err != nil {
+						log.Fatalf("fail get conf!!: %v", err)
+					}
+					iface, err := config.Interface(infNum, altNum)
+					if err != nil {
+						log.Fatalf("fail get iface!!: %v", err)
+					}
+					fmt.Printf("iface=%v\n", iface)
+					if epnt.Direction == gousb.EndpointDirectionIn {
+						dev.inEndpoint, err = iface.InEndpoint(int(epntNum))
 					} else {
-						fmt.Printf("OutEndpoint=%v\n", endPnt)
-						dev.outEndpoint, _ = intfc.OutEndpoint(int(endNum))
+						dev.outEndpoint, err = iface.OutEndpoint(int(epntNum))
 					}
 				}
 			}
 		}
 	}
+	fmt.Printf("InEndpoint= %v\n", dev.inEndpoint)
+	fmt.Printf("OutEndpoint= %v\n", dev.outEndpoint)
+	fmt.Printf("\n\n")
 }
 
 // Close close
