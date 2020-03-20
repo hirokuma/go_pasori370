@@ -7,3 +7,4 @@ depend:
 clean:
 	rm -f pasori
 	go clean -modcache
+	go mod tidy
