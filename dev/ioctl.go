@@ -1,9 +1,14 @@
 package dev
 
+// Msg raw data
+type Msg struct {
+	Cmd  uint8
+	Data []uint8
+}
+
 // IoCtl interface
 type IoCtl interface {
-	Open() bool
+	Open()
 	Close()
-	Read(int) []uint8
-	Write([]uint8) bool
+	Send(*Msg) (*Msg, error)
 }

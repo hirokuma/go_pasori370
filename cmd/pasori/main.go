@@ -6,14 +6,15 @@ import (
 )
 
 func main() {
-	var pasori dev.Pasori370Data
-	var msg pcd.RawMsg
+	var device dev.Pasori370Data
+	//var device dev.DummyData
 
-	pasori.Open()
-	defer pasori.Close()
+	device.Open()
+	defer device.Close()
+	var devdev dev.IoCtl = &device
+	pcd.SetDevice(&devdev)
 
-	msg.Cmd = 0x18
-	msg.Data = []uint8{0x01}
-	data := pcd.RawEncode(&msg)
-	pasori.Write(data)
+	var dataReset pcd.CodecReset
+	dataReset.Type = 0x01
+	dataReset.Reset()
 }

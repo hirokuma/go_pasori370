@@ -2,6 +2,7 @@ package dev
 
 import (
 	"encoding/hex"
+	"errors"
 	"log"
 )
 
@@ -11,13 +12,12 @@ type DummyData struct {
 }
 
 // Open open
-func (dev *DummyData) Open() bool {
+func (dev *DummyData) Open() {
 	if dev.IsOpen {
 		log.Fatalf("already opened\n")
 	}
 	dev.IsOpen = true
 	log.Printf("Opened\n")
-	return true
 }
 
 // Close close
@@ -26,21 +26,12 @@ func (dev *DummyData) Close() {
 	log.Printf("Closed\n")
 }
 
-// Read read
-func (dev *DummyData) Read(int) []uint8 {
+// Send send
+func (dev *DummyData) Send(msg *Msg) (*Msg, error) {
 	if !dev.IsOpen {
-		log.Printf("not opened\n")
+		return nil, errors.New("not opened")
 	}
-	log.Printf("Read\n")
-	return nil
-}
-
-// Write write
-func (dev *DummyData) Write(data []uint8) bool {
-	if !dev.IsOpen {
-		log.Printf("not opened\n")
-		return false
-	}
-	log.Printf("WriteData: %s\n", hex.Dump(data))
-	return true
+	log.Printf("Command: 0x%02x\n", msg.Cmd)
+	log.Printf("Data: %s\n", hex.EncodeToString(msg.Data))
+	return nil, nil
 }
