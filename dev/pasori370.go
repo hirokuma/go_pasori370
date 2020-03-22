@@ -1,9 +1,11 @@
 package dev
 
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"log"
+	"time"
 
 	// https://godoc.org/github.com/google/gousb
 	"github.com/google/gousb"
@@ -14,11 +16,18 @@ const (
 	productID = 0x02e1
 )
 
+var ackBytes = []uint8{0x00, 0x00, 0xff, 0x00, 0xff, 0x00}
+
 // Pasori370Data data
 type Pasori370Data struct {
+	ctx         *gousb.Context
 	dev         *gousb.Device
+	intf        *gousb.Interface
 	outEndpoint *gousb.OutEndpoint
 	inEndpoint  *gousb.InEndpoint
+	cfgNum      int
+	infNum      int
+	altNum      int
 }
 
 // Open open
@@ -26,11 +35,10 @@ type Pasori370Data struct {
 func (dev *Pasori370Data) Open() {
 	var err error
 	// Initialize a new Context.
-	ctx := gousb.NewContext()
-	defer ctx.Close()
+	dev.ctx = gousb.NewContext()
 
 	// Open any device with a given VID/PID using a convenience function.
-	dev.dev, err = ctx.OpenDeviceWithVIDPID(vendorID, productID)
+	dev.dev, err = dev.ctx.OpenDeviceWithVIDPID(vendorID, productID)
 	if err != nil {
 		log.Fatalf("Could not open a device: %v", err)
 	}
@@ -62,27 +70,42 @@ func (dev *Pasori370Data) Open() {
 					if err != nil {
 						log.Fatalf("fail get endpoint: %v", err)
 					}
+					if (dev.inEndpoint != nil) && (dev.outEndpoint != nil) {
+						dev.intf = iface
+						dev.cfgNum = cfgNum
+						dev.infNum = infNum
+						dev.altNum = altNum
+						break
+					}
 				}
 			}
 		}
 	}
+	log.Printf("iface=%v\n", dev.intf)
 	log.Printf("InEndpoint= %v\n", dev.inEndpoint)
 	log.Printf("OutEndpoint= %v\n", dev.outEndpoint)
+
+	dev.Send(nil)
+	time.Sleep(time.Millisecond * 500)
 }
 
 // Close close
 func (dev *Pasori370Data) Close() {
 	dev.dev.Close()
+	dev.ctx.Close()
 }
 
 // Send send
 func (dev *Pasori370Data) Send(msg *Msg) (*Msg, error) {
+	if msg == nil {
+		_, err := dev.outEndpoint.Write(ackBytes)
+		return nil, err
+	}
 	err := dev.write(msg)
 	if err != nil {
 		log.Fatalf("fail write: %v\n", err)
 		return nil, err
 	}
-	log.Printf("write\n")
 	result, err := dev.read()
 	if err != nil {
 		log.Fatalf("fail read: %v\n", err)
@@ -93,9 +116,7 @@ func (dev *Pasori370Data) Send(msg *Msg) (*Msg, error) {
 
 func (dev *Pasori370Data) write(msg *Msg) error {
 	data := rawEncode(msg)
-	log.Printf("data= %s\n", hex.EncodeToString(data))
 	length, err := dev.outEndpoint.Write(data)
-	log.Printf("wrote\n")
 	if err != nil {
 		return err
 	}
@@ -106,38 +127,48 @@ func (dev *Pasori370Data) write(msg *Msg) error {
 }
 
 func (dev *Pasori370Data) read() (*Msg, error) {
-	preAmble := dev.rawRead(5)
-	if (preAmble[0] != 0x00) || (preAmble[1] != 0x00) || (preAmble[2] != 0xff) {
+	pkt := dev.rawRead()
+	//log.Printf("pkt1= %s\n", hex.EncodeToString(pkt))
+	if bytes.Compare(ackBytes, pkt[:len(ackBytes)]) != 0 {
+		return nil, errors.New("not ACK")
+	}
+	if len(pkt) == len(ackBytes) {
+		pkt = dev.rawRead()
+	} else {
+		pkt = pkt[len(ackBytes):]
+	}
+	//log.Printf("pkt2= %s\n", hex.EncodeToString(pkt))
+
+	if (pkt[0] != 0x00) || (pkt[1] != 0x00) || (pkt[2] != 0xff) {
 		return nil, errors.New("bad preamble")
 	}
-	pktLen := dev.rawRead(2)
-	if ((pktLen[0] + pktLen[1]) & 0xff) != 0x00 {
+	if ((pkt[3] + pkt[4]) & 0xff) != 0x00 {
 		return nil, errors.New("bad length")
 	}
-	pktData := dev.rawRead(int(pktLen[0] + 1))
 	sum := 0
-	for val := range pktData {
-		sum += val
+	for _, val := range pkt[5:len(pkt)-1] {
+		sum += int(val)
 	}
 	if (sum & 0xff) != 0x00 {
 		return nil, errors.New("bad data")
 	}
-	postAmble := dev.rawRead(1)
-	if postAmble[0] != 0x00 {
+	if pkt[len(pkt)-1] != 0x00 {
 		return nil, errors.New("bad postamble")
 	}
-	if pktData[0] != 0xd5 {
+	if pkt[5] != 0xd5 {
 		return nil, errors.New("not Transmit response")
 	}
 	result := new(Msg)
-	result.Cmd = pktData[1]
-	result.Data = pktData[2 : len(pktData)-1]
+	result.Cmd = pkt[6]
+	result.Data = pkt[7 : len(pkt)-1]
+	//log.Printf("cmd=%02x, data=%s\n", result.Cmd, hex.EncodeToString(result.Data))
 	return result, nil
 }
 
-func (dev *Pasori370Data) rawRead(length int) []uint8 {
-	buf := make([]byte, length)
+func (dev *Pasori370Data) rawRead() []uint8 {
+	buf := make([]byte, 10*dev.inEndpoint.Desc.MaxPacketSize)
 	length, err := dev.inEndpoint.Read(buf)
+	log.Printf("read done: %d(%s)\n", length, hex.EncodeToString(buf[:length]))
 	if err == nil {
 		buf = buf[:length]
 	} else {
@@ -168,6 +199,7 @@ func rawEncode(msg *Msg) []uint8 {
 	return data
 }
 
+/*
 // rawDecode decode RC-S956 format
 func rawDecode(data []uint8) (*Msg, error) {
 	if len(data) < 9 {
@@ -200,3 +232,4 @@ func rawDecode(data []uint8) (*Msg, error) {
 	msg.Data = data[7 : len(data)-2]
 	return msg, nil
 }
+*/
