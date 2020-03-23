@@ -86,7 +86,6 @@ func (dev *Pasori370Data) Open() {
 	log.Printf("OutEndpoint= %v\n", dev.outEndpoint)
 
 	dev.Send(nil)
-	time.Sleep(time.Millisecond * 500)
 }
 
 // Close close
