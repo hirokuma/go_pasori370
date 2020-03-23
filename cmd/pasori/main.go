@@ -16,10 +16,25 @@ func main() {
 	var devdev dev.IoCtl = &device
 	pcd.SetDevice(&devdev)
 
-	var dataReset pcd.CodecReset
+	var dataReset pcd.MsgReset
 	dataReset.Type = 0x01
-	ret := dataReset.Reset()
-	if ret == nil {
-		log.Printf("ok\n")
+	err := dataReset.Reset()
+	if err != nil {
+		log.Fatalf("err: %v\n", err)
 	}
+
+	err = pcd.RfConfigTimeout()
+	if err != nil {
+		log.Fatalf("err: %v\n", err)
+	}
+	err = pcd.RfConfigRetry()
+	if err != nil {
+		log.Fatalf("err: %v\n", err)
+	}
+	err = pcd.RfConfigWait()
+	if err != nil {
+		log.Fatalf("err: %v\n", err)
+	}
+
+	log.Printf("done.\n")
 }

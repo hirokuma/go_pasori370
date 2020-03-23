@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"log"
-	"time"
 
 	// https://godoc.org/github.com/google/gousb
 	"github.com/google/gousb"
@@ -110,11 +109,17 @@ func (dev *Pasori370Data) Send(msg *Msg) (*Msg, error) {
 		log.Fatalf("fail read: %v\n", err)
 		return nil, err
 	}
+	if result.Cmd != msg.Cmd+1 {
+		err = errors.New("bad sub response")
+		log.Fatalf("fail: %v\n", err)
+		return nil, err
+	}
 	return result, nil
 }
 
 func (dev *Pasori370Data) write(msg *Msg) error {
 	data := rawEncode(msg)
+	log.Printf("write= %s\n", hex.EncodeToString(data))
 	length, err := dev.outEndpoint.Write(data)
 	if err != nil {
 		return err
@@ -145,7 +150,7 @@ func (dev *Pasori370Data) read() (*Msg, error) {
 		return nil, errors.New("bad length")
 	}
 	sum := 0
-	for _, val := range pkt[5:len(pkt)-1] {
+	for _, val := range pkt[5 : len(pkt)-1] {
 		sum += int(val)
 	}
 	if (sum & 0xff) != 0x00 {
