@@ -10,7 +10,7 @@ func TestRawEncode_Reset0(t *testing.T) {
 
 	msg.Cmd = 0x18
 	msg.Data = []uint8{0x00}
-	data := rawEncode(&msg)
+	data := msgEncode(&msg)
 
 	model := []uint8{
 		0x00, 0x00, 0xFF, 0x03, 0xFD, 0xD4, 0x18, 0x00, 0x14, 0x00,
@@ -25,7 +25,7 @@ func TestRawEncode_Reset1(t *testing.T) {
 
 	msg.Cmd = 0x18
 	msg.Data = []uint8{0x01}
-	data := rawEncode(&msg)
+	data := msgEncode(&msg)
 
 	model := []uint8{
 		0x00, 0x00, 0xFF, 0x03, 0xFD, 0xD4, 0x18, 0x01, 0x13, 0x00,
@@ -40,7 +40,7 @@ func TestRawDecode_nodata(t *testing.T) {
 		0x00, 0x00, 0xFF, 0x02, 0xFE, 0xD5, 0x19, 0x12, 0x00,
 	}
 
-	msg, err := rawDecode(model)
+	msg, err := msgDecode(model)
 	if err != nil {
 		t.Fatalf("err: %v\n", err)
 	}
@@ -57,7 +57,7 @@ func TestRawDecode_withdata(t *testing.T) {
 		0x00, 0x00, 0xFF, 0x03, 0xFD, 0xD5, 0x19, 0xAB, 0x67, 0x00,
 	}
 
-	msg, err := rawDecode(model)
+	msg, err := msgDecode(model)
 	if err != nil {
 		t.Fatalf("err: %v\n", err)
 	}
@@ -77,7 +77,7 @@ func TestRawDecode_tooshort(t *testing.T) {
 		0x00, 0x00, 0xFF, 0x02, 0xFE, 0xD5, 0x19, 0x12,
 	}
 
-	_, err := rawDecode(model)
+	_, err := msgDecode(model)
 	if err == nil {
 		t.Fatalf("err: %v\n", err)
 	}

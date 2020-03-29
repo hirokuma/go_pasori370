@@ -118,14 +118,14 @@ func (dev *Pasori370Data) Send(msg *Msg) (*Msg, error) {
 }
 
 func (dev *Pasori370Data) write(msg *Msg) error {
-	data := rawEncode(msg)
+	data := msgEncode(msg)
 	log.Printf("write= %s\n", hex.EncodeToString(data))
 	length, err := dev.outEndpoint.Write(data)
 	if err != nil {
 		return err
 	}
 	if length != len(data) {
-		return errors.New("bad length")
+		return ErrSendBadLength
 	}
 	return nil
 }
@@ -134,14 +134,14 @@ func (dev *Pasori370Data) read() (*Msg, error) {
 	pkt := dev.rawRead()
 	//log.Printf("pkt1= %s\n", hex.EncodeToString(pkt))
 	if bytes.Compare(ackBytes, pkt[:len(ackBytes)]) != 0 {
-		return nil, errors.New("not ACK")
+		return nil, ErrNotAck
 	}
 	if len(pkt) == len(ackBytes) {
 		pkt = dev.rawRead()
 	} else {
 		pkt = pkt[len(ackBytes):]
 	}
-	return rawDecode(pkt)
+	return msgDecode(pkt)
 }
 
 func (dev *Pasori370Data) rawRead() []uint8 {
@@ -154,64 +154,4 @@ func (dev *Pasori370Data) rawRead() []uint8 {
 		buf = nil
 	}
 	return buf
-}
-
-// rawEncode encode RC-S956 format
-func rawEncode(msg *Msg) []uint8 {
-	data := make([]uint8, 3+2+1+1+len(msg.Data)+2)
-	data[0] = 0x00
-	data[1] = 0x00
-	data[2] = 0xff
-	data[3] = (uint8)(1 + 1 + len(msg.Data))
-	data[4] = (uint8)(-data[3])
-	data[5] = 0xd4
-	data[6] = msg.Cmd
-	copy(data[7:], msg.Data[:])
-
-	sum := uint(0xd4 + msg.Cmd)
-	for _, v := range msg.Data {
-		sum += uint(v)
-	}
-	data[7+len(msg.Data)] = uint8(-sum)
-	data[7+len(msg.Data)+1] = 0x00
-
-	return data
-}
-
-// rawDecode decode RC-S956 format
-func rawDecode(pkt []uint8) (*Msg, error) {
-	//log.Printf("pkt2= %s\n", hex.EncodeToString(pkt))
-	if len(pkt) < 9 {
-		// maincmd + subcmd
-		return nil, errors.New("length too short")
-	}
-	if (pkt[0] != 0x00) || (pkt[1] != 0x00) || (pkt[2] != 0xff) {
-		return nil, errors.New("bad preamble")
-	}
-	if ((pkt[3] + pkt[4]) & 0xff) != 0x00 {
-		return nil, errors.New("bad length")
-	}
-	sum := 0
-	for _, val := range pkt[5 : len(pkt)-1] {
-		sum += int(val)
-	}
-	if (sum & 0xff) != 0x00 {
-		return nil, errors.New("bad data")
-	}
-	if pkt[len(pkt)-1] != 0x00 {
-		return nil, errors.New("bad postamble")
-	}
-	if pkt[5] != 0xd5 {
-		return nil, errors.New("not Transmit response")
-	}
-	if (pkt[6] % 2) != 1 {
-		return nil, errors.New("bad sub response")
-	}
-	result := new(Msg)
-	result.Cmd = pkt[6]
-	if len(pkt) - 7 > 0 {
-		result.Data = pkt[7 : len(pkt)-2]
-	}
-	//log.Printf("cmd=%02x, data=%s\n", result.Cmd, hex.EncodeToString(result.Data))
-	return result, nil
 }
