@@ -8,26 +8,41 @@ import (
 
 var devPcd dev.IoCtl
 
-// Init dev.IoCtl
-func Init(device *dev.IoCtl) {
-	devPcd = *device
+// Open dev.IoCtl
+func Open() {
+	if devPcd != nil {
+		log.Fatalf("already opened\n")
+	}
 
-	var dataReset MsgReset
+	var device dev.Pasori370Data
+
+	device.Open()
+	devPcd = &device
+
+	var dataReset dev.CmdReset
 	dataReset.Type = 0x01
-	err := dataReset.Reset()
+	err := dataReset.Reset(devPcd)
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
 	}
-	err = rfConfigTimeout()
+	err = dev.RfConfigTimeout(devPcd)
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
 	}
-	err = rfConfigRetry()
+	err = dev.RfConfigRetry(devPcd)
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
 	}
-	err = rfConfigWait()
+	err = dev.RfConfigWait(devPcd)
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
+	}
+}
+
+// Close close
+func Close() {
+	if devPcd != nil {
+		devPcd.Close()
+		devPcd = nil
 	}
 }
