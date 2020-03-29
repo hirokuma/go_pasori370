@@ -72,13 +72,118 @@ func TestRawDecode_withdata(t *testing.T) {
 	}
 }
 
-func TestRawDecode_tooshort(t *testing.T) {
+func TestRawDecode_longer(t *testing.T) {
+	model := []uint8{
+		0x00, 0x00, 0xFF, 0x02, 0xFE, 0xD5, 0x19, 0x12, 0x00, 0x11,
+	}
+
+	msg, err := msgDecode(model)
+	if err != nil {
+		t.Fatalf("err: %v\n", err)
+	}
+	if msg.Cmd != 0x19 {
+		t.Fatalf("not 0x19\n")
+	}
+	if len(msg.Data) != 0 {
+		t.Fatalf("invalid length: %d\n", len(msg.Data))
+	}
+}
+
+func TestRawDecode_invalid_length(t *testing.T) {
 	model := []uint8{
 		0x00, 0x00, 0xFF, 0x02, 0xFE, 0xD5, 0x19, 0x12,
 	}
 
 	_, err := msgDecode(model)
-	if err == nil {
+	if err != ErrPktInvLen {
+		t.Fatalf("err: %v\n", err)
+	}
+}
+
+func TestRawDecode_preamble1(t *testing.T) {
+	model := []uint8{
+		0x01, 0x00, 0xFF, 0x02, 0xFE, 0xD5, 0x19, 0x12, 0x00,
+	}
+
+	_, err := msgDecode(model)
+	if err != ErrBadPreamble {
+		t.Fatalf("err: %v\n", err)
+	}
+}
+
+func TestRawDecode_preamble2(t *testing.T) {
+	model := []uint8{
+		0x00, 0x01, 0xFF, 0x02, 0xFE, 0xD5, 0x19, 0x12, 0x00,
+	}
+
+	_, err := msgDecode(model)
+	if err != ErrBadPreamble {
+		t.Fatalf("err: %v\n", err)
+	}
+}
+
+func TestRawDecode_preamble3(t *testing.T) {
+	model := []uint8{
+		0x00, 0x00, 0x00, 0x02, 0xFE, 0xD5, 0x19, 0x12, 0x00,
+	}
+
+	_, err := msgDecode(model)
+	if err != ErrBadPreamble {
+		t.Fatalf("err: %v\n", err)
+	}
+}
+
+func TestRawDecode_bad_lcs(t *testing.T) {
+	model := []uint8{
+		0x00, 0x00, 0xFF, 0x02, 0xFD, 0xD5, 0x19, 0x12, 0x00,
+	}
+
+	_, err := msgDecode(model)
+	if err != ErrBadLcs {
+		t.Fatalf("err: %v\n", err)
+	}
+}
+
+func TestRawDecode_bad_postamble(t *testing.T) {
+	model := []uint8{
+		0x00, 0x00, 0xFF, 0x02, 0xFE, 0xD5, 0x19, 0x12, 0xFF,
+	}
+
+	_, err := msgDecode(model)
+	if err != ErrBadPostamble {
+		t.Fatalf("err: %v\n", err)
+	}
+}
+
+func TestRawDecode_bad_dcs(t *testing.T) {
+	model := []uint8{
+		0x00, 0x00, 0xFF, 0x02, 0xFE, 0xD5, 0x19, 0x13, 0x00,
+	}
+
+	_, err := msgDecode(model)
+	if err != ErrBadDcs {
+		t.Fatalf("err: %v\n", err)
+	}
+}
+
+func TestRawDecode_bad_response1(t *testing.T) {
+	model := []uint8{
+		0x00, 0x00, 0xFF, 0x02, 0xFE, 0xD6, 0x19, 0x11, 0x00,
+	}
+
+	_, err := msgDecode(model)
+	if err != ErrBadResponse {
+		t.Fatalf("err: %v\n", err)
+	}
+}
+
+func TestRawDecode_bad_response2(t *testing.T) {
+	model := []uint8{
+		0x00, 0x00, 0xFF, 0x02, 0xFE, 0xD5, 0x18, 0x13, 0x00,
+	}
+
+	_, err := msgDecode(model)
+	if err != ErrBadResponse {
 		t.Fatalf("err: %v\n", err)
 	}
 }

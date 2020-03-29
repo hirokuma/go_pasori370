@@ -41,26 +41,30 @@ func msgDecode(pkt []uint8) (*Msg, error) {
 	if ((pkt[3] + pkt[4]) & 0xff) != 0x00 {
 		return nil, ErrBadLcs
 	}
+
+	cmd := pkt[5:]
+	datalen := pkt[3]
+	// (datalen) + DCS + 00
+	if cmd[datalen+1] != 0x00 {
+		return nil, ErrBadPostamble
+	}
 	sum := 0
-	for _, val := range pkt[5 : len(pkt)-1] {
+	for _, val := range cmd[:datalen+1] {
 		sum += int(val)
 	}
 	if (sum & 0xff) != 0x00 {
 		return nil, ErrBadDcs
 	}
-	if pkt[len(pkt)-1] != 0x00 {
-		return nil, ErrBadPostamble
-	}
-	if pkt[5] != 0xd5 {
+	if cmd[0] != 0xd5 {
 		return nil, ErrBadResponse
 	}
-	if (pkt[6] % 2) != 1 {
+	if (cmd[1] % 2) != 1 {
 		return nil, ErrBadResponse
 	}
 	result := new(Msg)
-	result.Cmd = pkt[6]
-	if len(pkt)-7 > 0 {
-		result.Data = pkt[7 : len(pkt)-2]
+	result.Cmd = cmd[1]
+	if datalen > 2 {
+		result.Data = cmd[2 : datalen]
 	}
 	//log.Printf("cmd=%02x, data=%s\n", result.Cmd, hex.EncodeToString(result.Data))
 	return result, nil
