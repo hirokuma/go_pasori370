@@ -6,34 +6,28 @@ import (
 	"github.com/hirokuma/go_pasori370/dev"
 )
 
-var devPcd dev.IoCtl
-
-// Open dev.IoCtl
+// Open open Proximity Coupling Device
 func Open() {
-	if devPcd != nil {
-		log.Fatalf("already opened\n")
+	err := dev.Open()
+	if err != nil {
+		log.Fatalf("err: %v\n", err)
 	}
-
-	var device dev.Pasori370Data
-
-	device.Open()
-	devPcd = &device
 
 	var dataReset dev.CmdReset
 	dataReset.Type = 0x01
-	err := dataReset.Reset(devPcd)
+	err = dataReset.Reset()
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
 	}
-	err = dev.RfConfigTimeout(devPcd)
+	err = dev.RfConfigTimeout()
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
 	}
-	err = dev.RfConfigRetry(devPcd)
+	err = dev.RfConfigRetry()
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
 	}
-	err = dev.RfConfigWait(devPcd)
+	err = dev.RfConfigWait()
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
 	}
@@ -41,8 +35,5 @@ func Open() {
 
 // Close close
 func Close() {
-	if devPcd != nil {
-		devPcd.Close()
-		devPcd = nil
-	}
+	dev.Close()
 }

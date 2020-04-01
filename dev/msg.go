@@ -64,7 +64,7 @@ func msgDecode(pkt []uint8) (*Msg, error) {
 	result := new(Msg)
 	result.Cmd = cmd[1]
 	if datalen > 2 {
-		result.Data = cmd[2 : datalen]
+		result.Data = cmd[2:datalen]
 	}
 	//log.Printf("cmd=%02x, data=%s\n", result.Cmd, hex.EncodeToString(result.Data))
 	return result, nil

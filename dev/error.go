@@ -3,6 +3,9 @@ package dev
 import "errors"
 
 var (
+	// ErrAlreadyOpen already open
+	ErrAlreadyOpen = errors.New("already opened")
+
 	// ErrPktInvLen invalid packet length
 	ErrPktInvLen = errors.New("invalid length")
 

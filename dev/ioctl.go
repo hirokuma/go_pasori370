@@ -2,7 +2,7 @@ package dev
 
 // IoCtl interface
 type IoCtl interface {
-	Open()
+	Open() error
 	Close()
 	Send(*Msg) (*Msg, error)
 }

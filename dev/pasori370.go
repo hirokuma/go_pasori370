@@ -17,8 +17,8 @@ const (
 
 var ackBytes = []uint8{0x00, 0x00, 0xff, 0x00, 0xff, 0x00}
 
-// Pasori370Data data
-type Pasori370Data struct {
+// pasori370Data data
+type pasoriData struct {
 	ctx         *gousb.Context
 	dev         *gousb.Device
 	intf        *gousb.Interface
@@ -29,21 +29,28 @@ type Pasori370Data struct {
 	altNum      int
 }
 
+var pasori pasoriData
+
 // Open open
 // https://github.com/google/gousb/blob/master/example_test.go
-func (dev *Pasori370Data) Open() {
+func Open() error {
+	if pasori.ctx != nil {
+		return ErrAlreadyOpen
+	}
+
 	var err error
 	// Initialize a new Context.
-	dev.ctx = gousb.NewContext()
+	pasori.ctx = gousb.NewContext()
 
 	// Open any device with a given VID/PID using a convenience function.
-	dev.dev, err = dev.ctx.OpenDeviceWithVIDPID(vendorID, productID)
+	pasori.dev, err = pasori.ctx.OpenDeviceWithVIDPID(vendorID, productID)
 	if err != nil {
 		log.Fatalf("Could not open a device: %v", err)
+		return err
 	}
-	dev.dev.SetAutoDetach(true)
+	pasori.dev.SetAutoDetach(true)
 
-	for cfgNum, cfg := range dev.dev.Desc.Configs {
+	for cfgNum, cfg := range pasori.dev.Desc.Configs {
 		// log.Printf("config[%d]= %v\n", cfgNum, cfg)
 		for infNum, inf := range cfg.Interfaces {
 			// log.Printf("interface[%d]= %v\n", infNum, inf)
@@ -51,60 +58,70 @@ func (dev *Pasori370Data) Open() {
 				// log.Printf("alt[%d]= %v\n", altNum, alt)
 				for epntNum, epnt := range alt.Endpoints {
 					// log.Printf("epnt[%d]= %v\n", epntNum, epnt)
-					config, err := dev.dev.Config(cfgNum)
+					config, err := pasori.dev.Config(cfgNum)
 					if err != nil {
 						log.Fatalf("fail get conf: %v", err)
+						return err
 					}
 					iface, err := config.Interface(infNum, altNum)
 					if err != nil {
 						log.Fatalf("fail get iface: %v", err)
+						return err
 					}
 					// log.Printf("iface=%v\n", iface)
 					err = nil
 					if epnt.Direction == gousb.EndpointDirectionIn {
-						dev.inEndpoint, err = iface.InEndpoint(int(epntNum))
+						pasori.inEndpoint, err = iface.InEndpoint(int(epntNum))
 					} else {
-						dev.outEndpoint, err = iface.OutEndpoint(int(epntNum))
+						pasori.outEndpoint, err = iface.OutEndpoint(int(epntNum))
 					}
 					if err != nil {
 						log.Fatalf("fail get endpoint: %v", err)
+						return err
 					}
-					if (dev.inEndpoint != nil) && (dev.outEndpoint != nil) {
-						dev.intf = iface
-						dev.cfgNum = cfgNum
-						dev.infNum = infNum
-						dev.altNum = altNum
+					if (pasori.inEndpoint != nil) && (pasori.outEndpoint != nil) {
+						pasori.intf = iface
+						pasori.cfgNum = cfgNum
+						pasori.infNum = infNum
+						pasori.altNum = altNum
 						break
 					}
 				}
 			}
 		}
 	}
-	log.Printf("iface=%v\n", dev.intf)
-	log.Printf("InEndpoint= %v\n", dev.inEndpoint)
-	log.Printf("OutEndpoint= %v\n", dev.outEndpoint)
+	// log.Printf("iface=%v\n", pasori.intf)
+	// log.Printf("InEndpoint= %v\n", pasori.inEndpoint)
+	// log.Printf("OutEndpoint= %v\n", pasori.outEndpoint)
 
-	dev.Send(nil)
+	_, err = Send(nil)
+	log.Printf("Opened\n")
+
+	return err
 }
 
 // Close close
-func (dev *Pasori370Data) Close() {
-	dev.dev.Close()
-	dev.ctx.Close()
+func Close() {
+	if pasori.ctx != nil {
+		pasori.dev.Close()
+		pasori.ctx.Close()
+		pasori.ctx = nil
+	}
+	log.Printf("Closed\n")
 }
 
 // Send send
-func (dev *Pasori370Data) Send(msg *Msg) (*Msg, error) {
+func Send(msg *Msg) (*Msg, error) {
 	if msg == nil {
-		_, err := dev.outEndpoint.Write(ackBytes)
+		_, err := pasori.outEndpoint.Write(ackBytes)
 		return nil, err
 	}
-	err := dev.write(msg)
+	err := write(msg)
 	if err != nil {
 		log.Fatalf("fail write: %v\n", err)
 		return nil, err
 	}
-	result, err := dev.read()
+	result, err := read()
 	if err != nil {
 		log.Fatalf("fail read: %v\n", err)
 		return nil, err
@@ -117,10 +134,10 @@ func (dev *Pasori370Data) Send(msg *Msg) (*Msg, error) {
 	return result, nil
 }
 
-func (dev *Pasori370Data) write(msg *Msg) error {
+func write(msg *Msg) error {
 	data := msgEncode(msg)
 	log.Printf("write= %s\n", hex.EncodeToString(data))
-	length, err := dev.outEndpoint.Write(data)
+	length, err := pasori.outEndpoint.Write(data)
 	if err != nil {
 		return err
 	}
@@ -130,23 +147,23 @@ func (dev *Pasori370Data) write(msg *Msg) error {
 	return nil
 }
 
-func (dev *Pasori370Data) read() (*Msg, error) {
-	pkt := dev.rawRead()
+func read() (*Msg, error) {
+	pkt := rawRead()
 	//log.Printf("pkt1= %s\n", hex.EncodeToString(pkt))
 	if bytes.Compare(ackBytes, pkt[:len(ackBytes)]) != 0 {
 		return nil, ErrNotAck
 	}
 	if len(pkt) == len(ackBytes) {
-		pkt = dev.rawRead()
+		pkt = rawRead()
 	} else {
 		pkt = pkt[len(ackBytes):]
 	}
 	return msgDecode(pkt)
 }
 
-func (dev *Pasori370Data) rawRead() []uint8 {
-	buf := make([]byte, 10*dev.inEndpoint.Desc.MaxPacketSize)
-	length, err := dev.inEndpoint.Read(buf)
+func rawRead() []uint8 {
+	buf := make([]byte, 10*pasori.inEndpoint.Desc.MaxPacketSize)
+	length, err := pasori.inEndpoint.Read(buf)
 	log.Printf("read done: %d(%s)\n", length, hex.EncodeToString(buf[:length]))
 	if err == nil {
 		buf = buf[:length]

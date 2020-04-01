@@ -6,11 +6,11 @@ type CmdRfConfig struct {
 }
 
 // rfConfig RFConfiguration
-func (data *CmdRfConfig) rfConfig(devPcd IoCtl) error {
+func (data *CmdRfConfig) rfConfig() error {
 	var msg Msg
 	msg.Cmd = 0x32
 	msg.Data = data.Data
-	_, err := devPcd.Send(&msg)
+	_, err := Send(&msg)
 	if err != nil {
 		return err
 	}
@@ -18,10 +18,10 @@ func (data *CmdRfConfig) rfConfig(devPcd IoCtl) error {
 }
 
 // RfConfigTimeout set timeout
-func RfConfigTimeout(devPcd IoCtl) error {
+func RfConfigTimeout() error {
 	var data CmdRfConfig
 	data.Data = []uint8{0x02, 0x00, 0x00, 0x00}
-	err := data.rfConfig(devPcd)
+	err := data.rfConfig()
 	if err != nil {
 		return err
 	}
@@ -29,10 +29,10 @@ func RfConfigTimeout(devPcd IoCtl) error {
 }
 
 // RfConfigRetry set retry
-func RfConfigRetry(devPcd IoCtl) error {
+func RfConfigRetry() error {
 	var data CmdRfConfig
 	data.Data = []uint8{0x05, 0x00, 0x00, 0x00}
-	err := data.rfConfig(devPcd)
+	err := data.rfConfig()
 	if err != nil {
 		return err
 	}
@@ -40,10 +40,10 @@ func RfConfigRetry(devPcd IoCtl) error {
 }
 
 // RfConfigWait set additional wait
-func RfConfigWait(devPcd IoCtl) error {
+func RfConfigWait() error {
 	var data CmdRfConfig
 	data.Data = []uint8{0x81, 0xb7}
-	err := data.rfConfig(devPcd)
+	err := data.rfConfig()
 	if err != nil {
 		return err
 	}
@@ -51,10 +51,10 @@ func RfConfigWait(devPcd IoCtl) error {
 }
 
 // RfConfigOff RF off
-func RfConfigOff(devPcd IoCtl) error {
+func RfConfigOff() error {
 	var data CmdRfConfig
 	data.Data = []uint8{0x00}
-	err := data.rfConfig(devPcd)
+	err := data.rfConfig()
 	if err != nil {
 		return err
 	}
