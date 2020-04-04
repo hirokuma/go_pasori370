@@ -6,6 +6,12 @@ import (
 	"github.com/hirokuma/go_pasori370/dev"
 )
 
+// ResultPolling result
+type ResultPolling struct {
+	NfcA *dev.CmdInListNfcA
+	NfcF *dev.CmdInListNfcF
+}
+
 // Open open Proximity Coupling Device
 func Open() {
 	err := dev.Open()
@@ -36,4 +42,14 @@ func Open() {
 // Close close
 func Close() {
 	dev.Close()
+}
+
+// Polling polling
+func (result *ResultPolling) Polling() error {
+	var inlist dev.CmdInListNfcF
+	err := inlist.InListPassiveTarget()
+	if err == nil {
+		result.NfcF = &inlist
+	}
+	return err
 }
