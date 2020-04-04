@@ -46,10 +46,22 @@ func Close() {
 
 // Polling polling
 func (result *ResultPolling) Polling() error {
-	var inlist dev.CmdInListNfcF
-	err := inlist.InListPassiveTarget()
-	if err == nil {
-		result.NfcF = &inlist
+	{
+		var inlist dev.CmdInListNfcF
+		err := inlist.InListPassiveTarget()
+		if err == nil {
+			result.NfcF = &inlist
+			return nil
+		}
 	}
-	return err
+
+	{
+		var inlist dev.CmdInListNfcA
+		err := inlist.InListPassiveTarget()
+		if err == nil {
+			result.NfcA = &inlist
+			return nil
+		}
+	}
+	return dev.ErrNotTagFound
 }

@@ -29,4 +29,7 @@ var (
 
 	// ErrNotAck not ACK
 	ErrNotAck = errors.New("not ACK")
+
+	// ErrNotTagFound not Tag Found
+	ErrNotTagFound = errors.New("not Tag Found")
 )
